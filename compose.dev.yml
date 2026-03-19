@@ -1,0 +1,17 @@
+services:
+  service:
+    build: .
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges]
+    healthcheck:
+      test: [CMD, /bin/httpcheck, http://127.0.0.1:8000/health]
+      interval: 1m
+      retries: 3
+      timeout: 10s
+      start_period: 1m
+    ports:
+      - 127.0.0.1:8000:8000/tcp
+    environment:
+      GITEA_PAGES_SERVER: http://127.0.0.1:1
+      GITEA_PAGES_TOKEN: example

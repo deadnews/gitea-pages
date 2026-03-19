@@ -1,0 +1,26 @@
+version: 2
+
+builds:
+  - main: ./cmd/gitea-pages/
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s
+
+release:
+  prerelease: auto
+  footer: |
+    See [the CHANGELOG]({{ .GitURL }}/blob/main/CHANGELOG.md) for more details.
+
+changelog:
+  sort: asc
+  use: git
+  filters:
+    exclude:
+      - ^chore
+      - ^test
+      - ^(ci|build|chore)\(deps.*\)

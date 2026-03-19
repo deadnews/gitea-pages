@@ -1,0 +1,17 @@
+{
+  "languages": {
+    "Go": {
+      "code_actions_on_format": {
+        "source.organizeImports": true
+      }
+    }
+  },
+  "lsp": {
+    "gopls": {
+      "initialization_options": {
+        "formatting.gofumpt": true,
+        "vulncheck": "Imports"
+      }
+    }
+  }
+}
