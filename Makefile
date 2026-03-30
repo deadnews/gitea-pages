@@ -15,7 +15,8 @@ up:
 	go mod verify
 up-ci:
 	prek auto-update --freeze
-	pinact run -update
+	pindock run --update
+	pinact run --update
 
 run:
 	go run ./cmd/gitea-pages

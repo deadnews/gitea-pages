@@ -22,7 +22,7 @@ repos:
       - id: typos
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 9f48a48aa91a6040d749ad68ec70907d907a5a7f # frozen: 0.37.0
+    rev: 13614ab716a3113145f1294ed259d9fbe5678ff3 # frozen: 0.37.1
     hooks:
       - id: check-github-workflows
       - id: check-renovate
@@ -39,7 +39,7 @@ repos:
         args: [--fix=safe]
 
   - repo: https://github.com/golangci/golangci-lint
-    rev: 6008b81b81c690c046ffc3fd5bce896da715d5fd # frozen: v2.11.3
+    rev: 8f3b0c7ed018e57905fbd873c697e0b1ede605a5 # frozen: v2.11.4
     hooks:
       - id: golangci-lint-full
 
