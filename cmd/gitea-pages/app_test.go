@@ -14,6 +14,7 @@ func TestNewApp(t *testing.T) {
 			GiteaServer: fg.server.URL,
 			GiteaToken:  "test-token",
 			PagesBranch: "gh-pages",
+			Addr:        ":8000",
 		}
 
 		app, err := NewApp(cfg)
@@ -21,7 +22,8 @@ func TestNewApp(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, app)
 		assert.NotNil(t, app.Client)
-		assert.Equal(t, "gh-pages", app.PagesBranch)
+		assert.Equal(t, "gh-pages", app.Config.PagesBranch)
+		assert.Equal(t, ":8000", app.Config.Addr)
 	})
 
 	t.Run("propagates pages branch from config", func(t *testing.T) {
@@ -35,7 +37,7 @@ func TestNewApp(t *testing.T) {
 		app, err := NewApp(cfg)
 
 		require.NoError(t, err)
-		assert.Equal(t, "custom-branch", app.PagesBranch)
+		assert.Equal(t, "custom-branch", app.Config.PagesBranch)
 	})
 
 	t.Run("returns error for invalid server URL", func(t *testing.T) {

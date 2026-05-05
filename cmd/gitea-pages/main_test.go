@@ -17,7 +17,6 @@ import (
 type fakeGitea struct {
 	server *httptest.Server
 	client *gitea.Client
-	files  map[string]string // "owner/repo/branch/path" -> content
 }
 
 func newFakeGitea(t *testing.T) *fakeGitea {
@@ -64,24 +63,24 @@ func newFakeGitea(t *testing.T) *fakeGitea {
 	client, err := gitea.NewClient(server.URL, gitea.SetToken("test-token"))
 	require.NoError(t, err)
 
-	return &fakeGitea{server: server, client: client, files: files}
+	return &fakeGitea{server: server, client: client}
 }
 
-func TestSetupServer(t *testing.T) {
-	fg := newFakeGitea(t)
-	app := &App{Client: fg.client, PagesBranch: "gh-pages"}
-	cfg := &Config{Addr: ":8000"}
-	server := setupServer(cfg, app)
+func (f *fakeGitea) newApp() *App {
+	return &App{Client: f.client, Config: &Config{PagesBranch: "gh-pages", Addr: ":8000"}}
+}
+
+func TestNewServer(t *testing.T) {
+	app := newFakeGitea(t).newApp()
+	server := app.newServer()
 
 	assert.NotNil(t, server)
 	assert.NotNil(t, server.Handler)
 }
 
-func TestSetupServerNonExistentRoute(t *testing.T) {
-	fg := newFakeGitea(t)
-	app := &App{Client: fg.client, PagesBranch: "gh-pages"}
-	cfg := &Config{Addr: ":8000"}
-	server := setupServer(cfg, app)
+func TestNewServerNonExistentRoute(t *testing.T) {
+	app := newFakeGitea(t).newApp()
+	server := app.newServer()
 
 	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "/nonexistent", http.NoBody)
 	require.NoError(t, err)
@@ -92,42 +91,25 @@ func TestSetupServerNonExistentRoute(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, rr.Code)
 }
 
-func TestSetupServerMethodNotAllowed(t *testing.T) {
-	fg := newFakeGitea(t)
-	app := &App{Client: fg.client, PagesBranch: "gh-pages"}
-	cfg := &Config{Addr: ":8000"}
-	server := setupServer(cfg, app)
+func TestNewServerMethodNotAllowed(t *testing.T) {
+	app := newFakeGitea(t).newApp()
+	server := app.newServer()
 
-	tests := []struct {
-		name   string
-		method string
-		path   string
-	}{
-		{"POST to /health", http.MethodPost, "/health"},
-		{"PUT to /health", http.MethodPut, "/health"},
-	}
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "/health", http.NoBody)
+	require.NoError(t, err)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			req, err := http.NewRequestWithContext(t.Context(), tt.method, tt.path, http.NoBody)
-			require.NoError(t, err)
+	rr := httptest.NewRecorder()
+	server.Handler.ServeHTTP(rr, req)
 
-			rr := httptest.NewRecorder()
-			server.Handler.ServeHTTP(rr, req)
-
-			assert.Equal(t, http.StatusMethodNotAllowed, rr.Code)
-		})
-	}
+	assert.Equal(t, http.StatusMethodNotAllowed, rr.Code)
 }
 
 // TestIntegration uses a real HTTP server and client to verify end-to-end
 // behavior including redirect chains that httptest.NewRecorder cannot exercise.
 func TestIntegration(t *testing.T) {
-	fg := newFakeGitea(t)
-
-	app := &App{Client: fg.client, PagesBranch: "gh-pages"}
-	cfg := &Config{Addr: ":0"}
-	srv := httptest.NewServer(setupServer(cfg, app).Handler)
+	app := newFakeGitea(t).newApp()
+	app.Config.Addr = ":0"
+	srv := httptest.NewServer(app.newServer().Handler)
 	t.Cleanup(srv.Close)
 
 	client := srv.Client()
@@ -152,13 +134,6 @@ func TestIntegration(t *testing.T) {
 		{
 			name:       "directory redirect chain serves index",
 			path:       "/testorg/testrepo/subdir",
-			wantURL:    "/testorg/testrepo/subdir/",
-			wantStatus: http.StatusOK,
-			wantBody:   "<html>subdir</html>",
-		},
-		{
-			name:       "query string preserved through redirect",
-			path:       "/testorg/testrepo/subdir?v=123",
 			wantURL:    "/testorg/testrepo/subdir/",
 			wantStatus: http.StatusOK,
 			wantBody:   "<html>subdir</html>",

@@ -19,11 +19,8 @@ func TestHandleHealth(t *testing.T) {
 }
 
 func TestHandlePages(t *testing.T) {
-	fg := newFakeGitea(t)
-
-	app := &App{Client: fg.client, PagesBranch: "gh-pages"}
-	cfg := &Config{Addr: ":8000"}
-	server := setupServer(cfg, app)
+	app := newFakeGitea(t).newApp()
+	server := app.newServer()
 
 	tests := []struct {
 		name       string
@@ -108,11 +105,8 @@ func TestHandlePages(t *testing.T) {
 }
 
 func TestHandleRepoRedirect(t *testing.T) {
-	fg := newFakeGitea(t)
-
-	app := &App{Client: fg.client, PagesBranch: "gh-pages"}
-	cfg := &Config{Addr: ":8000"}
-	server := setupServer(cfg, app)
+	app := newFakeGitea(t).newApp()
+	server := app.newServer()
 
 	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "/testorg/testrepo", http.NoBody)
 	require.NoError(t, err)

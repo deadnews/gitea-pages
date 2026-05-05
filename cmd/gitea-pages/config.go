@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"errors"
 	"os"
 )
@@ -18,8 +19,8 @@ func LoadConfig() (*Config, error) {
 	cfg := &Config{
 		GiteaServer: os.Getenv("GITEA_PAGES_SERVER"),
 		GiteaToken:  os.Getenv("GITEA_PAGES_TOKEN"),
-		PagesBranch: os.Getenv("GITEA_PAGES_BRANCH"),
-		Addr:        os.Getenv("GITEA_PAGES_ADDR"),
+		PagesBranch: cmp.Or(os.Getenv("GITEA_PAGES_BRANCH"), "gh-pages"),
+		Addr:        cmp.Or(os.Getenv("GITEA_PAGES_ADDR"), ":8000"),
 	}
 
 	if cfg.GiteaServer == "" {
@@ -27,12 +28,6 @@ func LoadConfig() (*Config, error) {
 	}
 	if cfg.GiteaToken == "" {
 		return nil, errors.New("GITEA_PAGES_TOKEN environment variable is required")
-	}
-	if cfg.PagesBranch == "" {
-		cfg.PagesBranch = "gh-pages"
-	}
-	if cfg.Addr == "" {
-		cfg.Addr = ":8000"
 	}
 
 	return cfg, nil
