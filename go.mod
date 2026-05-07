@@ -3,7 +3,7 @@ module github.com/deadnews/gitea-pages
 go 1.26
 
 require (
-	code.gitea.io/sdk/gitea v0.24.1
+	code.gitea.io/sdk/gitea v0.25.0
 	github.com/stretchr/testify v1.11.1
 )
 
