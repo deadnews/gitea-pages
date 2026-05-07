@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.0.1](https://github.com/deadnews/gitea-pages/compare/v1.0.0...v1.0.1) - 2026-05-07
+
+### Bug fixes
+
+- log upstream cause on non-404 fetch failures ([#3](https://github.com/deadnews/gitea-pages/issues/3)) - ([1e2735e](https://github.com/deadnews/gitea-pages/commit/1e2735efc4a08d6a9b27a0ea0119b0f8d834eba6))
+
+### Chores
+
+- _(github)_ replace `codecov` with `coverage-badge-action` - ([82e4957](https://github.com/deadnews/gitea-pages/commit/82e4957fefa4eea308fa402af51f1a56ce215848))
+
 ## [1.0.0](https://github.com/deadnews/gitea-pages/commits/v1.0.0) - 2026-03-19
 
 ### Features
