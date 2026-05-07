@@ -12,34 +12,34 @@ repos:
         args: [--fix=lf]
 
   - repo: https://github.com/rbubley/mirrors-prettier
-    rev: c2bc67fe8f8f549cc489e00ba8b45aa18ee713b1 # frozen: v3.8.1
+    rev: 515f543f5718ebfd6ce22e16708bb32c68ff96e1 # frozen: v3.8.3
     hooks:
       - id: prettier
 
   - repo: https://github.com/crate-ci/typos
-    rev: 631208b7aac2daa8b707f55e7331f9112b0e062d # frozen: v1.44.0
+    rev: bbaefadf97b0ec5fdc942684b647f1a6ab250274 # frozen: v1.46.0
     hooks:
       - id: typos
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 13614ab716a3113145f1294ed259d9fbe5678ff3 # frozen: 0.37.1
+    rev: f805888065fdb6162e1f800e50bb9460cbd223d6 # frozen: 0.37.2
     hooks:
       - id: check-github-workflows
       - id: check-renovate
 
   - repo: https://github.com/rhysd/actionlint
-    rev: 393031adb9afb225ee52ae2ccd7a5af5525e03e8 # frozen: v1.7.11
+    rev: 914e7df21a07ef503a81201c76d2b11c789d3fca # frozen: v1.7.12
     hooks:
       - id: actionlint
 
   - repo: https://github.com/zizmorcore/zizmor-pre-commit
-    rev: ea2eb407b4cbce87cf0d502f36578950494f5ac9 # frozen: v1.23.1
+    rev: a4727cbbcd26d7098e96b9cb738169b59711ae51 # frozen: v1.24.1
     hooks:
       - id: zizmor
         args: [--fix=safe]
 
   - repo: https://github.com/golangci/golangci-lint
-    rev: 8f3b0c7ed018e57905fbd873c697e0b1ede605a5 # frozen: v2.11.4
+    rev: c0d3ddc9cf3faa61a4e378e879ece580256d76e5 # frozen: v2.12.2
     hooks:
       - id: golangci-lint-full
 

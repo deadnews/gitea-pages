@@ -8,8 +8,8 @@ import (
 
 // App holds application dependencies.
 type App struct {
-	Client      *gitea.Client
-	PagesBranch string
+	Client *gitea.Client
+	Config *Config
 }
 
 // NewApp creates a new App with the given configuration.
@@ -18,5 +18,5 @@ func NewApp(cfg *Config) (*App, error) {
 	if err != nil {
 		return nil, fmt.Errorf("creating gitea client: %w", err)
 	}
-	return &App{Client: client, PagesBranch: cfg.PagesBranch}, nil
+	return &App{Client: client, Config: cfg}, nil
 }

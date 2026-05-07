@@ -33,7 +33,7 @@ func (app *App) handlePages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Try exact file.
+	// Serve file at the exact path.
 	content, err := app.getFile(owner, repo, rawPath)
 	if err == nil {
 		writeContent(w, rawPath, content)
@@ -60,11 +60,13 @@ func writeContent(w http.ResponseWriter, filePath string, content []byte) {
 }
 
 func (app *App) getFile(owner, repo, filePath string) ([]byte, error) {
-	content, _, err := app.Client.GetFile(owner, repo, app.PagesBranch, filePath, true)
+	content, resp, err := app.Client.GetFile(owner, repo, app.Config.PagesBranch, filePath, true)
 	if err != nil {
+		if resp == nil || resp.StatusCode != http.StatusNotFound {
+			slog.Warn("gitea fetch failed", "owner", owner, "repo", repo, "path", filePath, "error", err)
+		}
 		return nil, fmt.Errorf("fetching %s/%s/%s: %w", owner, repo, filePath, err)
 	}
-
 	return content, nil
 }
 
