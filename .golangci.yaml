@@ -7,6 +7,7 @@ linters:
     - asciicheck
     - bidichk
     - bodyclose
+    - containedctx
     - copyloopvar
     - dogsled
     - dupl
@@ -41,6 +42,7 @@ linters:
     - nakedret
     - nestif
     - nilerr
+    - nilnesserr
     - nilnil
     - noctx
     - nolintlint
@@ -48,6 +50,7 @@ linters:
     - prealloc
     - predeclared
     - promlinter
+    - reassign
     - recvcheck
     - revive
     - rowserrcheck
@@ -55,6 +58,7 @@ linters:
     - sqlclosecheck
     - staticcheck
     - testifylint
+    - thelper
     - tparallel
     - unconvert
     - unparam

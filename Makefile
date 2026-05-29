@@ -6,7 +6,8 @@ check: pc test
 pc:
 	prek run -a
 test:
-	go test -v -race -covermode=atomic -coverprofile=coverage.txt ./...
+	go test -race -covermode=atomic -coverprofile=coverage.txt ./...
+	@go tool cover -func=coverage.txt | tail -1
 
 update: up up-ci
 up:

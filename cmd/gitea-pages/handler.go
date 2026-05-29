@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log/slog"
 	"mime"
 	"net/http"
@@ -23,8 +22,8 @@ func (app *App) handlePages(w http.ResponseWriter, r *http.Request) {
 	if rawPath == "" || strings.HasSuffix(rawPath, "/") {
 		filePath := rawPath + "index.html"
 
-		content, err := app.getFile(owner, repo, filePath)
-		if err != nil {
+		content, ok := app.getFile(owner, repo, filePath)
+		if !ok {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			return
 		}
@@ -34,14 +33,13 @@ func (app *App) handlePages(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Serve file at the exact path.
-	content, err := app.getFile(owner, repo, rawPath)
-	if err == nil {
+	if content, ok := app.getFile(owner, repo, rawPath); ok {
 		writeContent(w, rawPath, content)
 		return
 	}
 
 	// Check if directory with index.html exists → redirect to trailing slash.
-	if _, err := app.getFile(owner, repo, rawPath+"/index.html"); err == nil {
+	if _, ok := app.getFile(owner, repo, rawPath+"/index.html"); ok {
 		http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently)
 		return
 	}
@@ -59,15 +57,15 @@ func writeContent(w http.ResponseWriter, filePath string, content []byte) {
 	}
 }
 
-func (app *App) getFile(owner, repo, filePath string) ([]byte, error) {
+func (app *App) getFile(owner, repo, filePath string) ([]byte, bool) {
 	content, resp, err := app.Client.GetFile(owner, repo, app.Config.PagesBranch, filePath, true)
 	if err != nil {
 		if resp == nil || resp.StatusCode != http.StatusNotFound {
 			slog.Warn("gitea fetch failed", "owner", owner, "repo", repo, "path", filePath, "error", err)
 		}
-		return nil, fmt.Errorf("fetching %s/%s/%s: %w", owner, repo, filePath, err)
+		return nil, false
 	}
-	return content, nil
+	return content, true
 }
 
 // handleRepoRedirect redirects /{owner}/{repo} to /{owner}/{repo}/.

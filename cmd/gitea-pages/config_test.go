@@ -31,6 +31,7 @@ func TestLoadConfig(t *testing.T) {
 				"GITEA_PAGES_TOKEN":  "test-token",
 			},
 			check: func(t *testing.T, cfg *Config) {
+				t.Helper()
 				assert.Equal(t, "https://gitea.example.com", cfg.GiteaServer)
 				assert.Equal(t, "test-token", cfg.GiteaToken)
 				assert.Equal(t, "gh-pages", cfg.PagesBranch)
@@ -46,6 +47,7 @@ func TestLoadConfig(t *testing.T) {
 				"GITEA_PAGES_ADDR":   ":9000",
 			},
 			check: func(t *testing.T, cfg *Config) {
+				t.Helper()
 				assert.Equal(t, "pages", cfg.PagesBranch)
 				assert.Equal(t, ":9000", cfg.Addr)
 			},
