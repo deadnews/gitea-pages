@@ -104,6 +104,22 @@ func TestHandlePages(t *testing.T) {
 	}
 }
 
+// Directory requests that miss must 404 after a single fetch: probing
+// "{path}//index.html" could cause spurious redirects on a normalizing backend.
+func TestHandlePagesDirectoryMissSingleFetch(t *testing.T) {
+	fg := newFakeGitea(t)
+	server := fg.newApp().newServer()
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "/testorg/testrepo/nonexistent/", http.NoBody)
+	require.NoError(t, err)
+
+	rec := httptest.NewRecorder()
+	server.Handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Equal(t, int32(1), fg.fileRequests.Load())
+}
+
 func TestHandleRepoRedirect(t *testing.T) {
 	app := newFakeGitea(t).newApp()
 	server := app.newServer()

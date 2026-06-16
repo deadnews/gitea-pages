@@ -18,30 +18,22 @@ func (app *App) handlePages(w http.ResponseWriter, r *http.Request) {
 	repo := r.PathValue("repo")
 	rawPath := r.PathValue("path")
 
-	// Serve index.html for directory requests (root or trailing slash).
-	if rawPath == "" || strings.HasSuffix(rawPath, "/") {
-		filePath := rawPath + "index.html"
-
-		content, ok := app.getFile(owner, repo, filePath)
-		if !ok {
-			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			return
-		}
-
+	// Directory requests (root or trailing slash) serve index.html.
+	filePath := rawPath
+	if filePath == "" || strings.HasSuffix(filePath, "/") {
+		filePath += "index.html"
+	}
+	if content, ok := app.getFile(owner, repo, filePath); ok {
 		writeContent(w, filePath, content)
 		return
 	}
 
-	// Serve file at the exact path.
-	if content, ok := app.getFile(owner, repo, rawPath); ok {
-		writeContent(w, rawPath, content)
-		return
-	}
-
-	// Check if directory with index.html exists → redirect to trailing slash.
-	if _, ok := app.getFile(owner, repo, rawPath+"/index.html"); ok {
-		http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently)
-		return
+	// Directory without trailing slash → redirect if its index.html exists.
+	if filePath == rawPath {
+		if _, ok := app.getFile(owner, repo, rawPath+"/index.html"); ok {
+			http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently)
+			return
+		}
 	}
 
 	http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)

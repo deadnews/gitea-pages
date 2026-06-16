@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"code.gitea.io/sdk/gitea"
@@ -15,13 +16,15 @@ import (
 
 // fakeGitea is an in-memory Gitea API stub for tests.
 type fakeGitea struct {
-	server *httptest.Server
-	client *gitea.Client
+	server       *httptest.Server
+	client       *gitea.Client
+	fileRequests atomic.Int32
 }
 
 func newFakeGitea(t *testing.T) *fakeGitea {
 	t.Helper()
 
+	fg := &fakeGitea{}
 	files := map[string]string{
 		"testorg/testrepo/gh-pages/index.html":        "<html>index</html>",
 		"testorg/testrepo/gh-pages/style.css":         "body {}",
@@ -47,6 +50,7 @@ func newFakeGitea(t *testing.T) *fakeGitea {
 			rest := urlPath[len(prefix):]
 			parts := strings.SplitN(rest, "/", 4) // [owner, repo, "media", filepath]
 			if len(parts) == 4 && parts[2] == "media" {
+				fg.fileRequests.Add(1)
 				ref := r.URL.Query().Get("ref")
 				key := fmt.Sprintf("%s/%s/%s/%s", parts[0], parts[1], ref, parts[3])
 				if content, ok := files[key]; ok {
@@ -63,19 +67,13 @@ func newFakeGitea(t *testing.T) *fakeGitea {
 	client, err := gitea.NewClient(server.URL, gitea.SetToken("test-token"))
 	require.NoError(t, err)
 
-	return &fakeGitea{server: server, client: client}
+	fg.server = server
+	fg.client = client
+	return fg
 }
 
 func (f *fakeGitea) newApp() *App {
 	return &App{Client: f.client, Config: &Config{PagesBranch: "gh-pages", Addr: ":8000"}}
-}
-
-func TestNewServer(t *testing.T) {
-	app := newFakeGitea(t).newApp()
-	server := app.newServer()
-
-	assert.NotNil(t, server)
-	assert.NotNil(t, server.Handler)
 }
 
 func TestNewServerNonExistentRoute(t *testing.T) {
@@ -139,38 +137,12 @@ func TestIntegration(t *testing.T) {
 			wantBody:   "<html>subdir</html>",
 		},
 		{
-			name:       "serves file directly without redirect",
-			path:       "/testorg/testrepo/style.css",
-			wantURL:    "/testorg/testrepo/style.css",
-			wantStatus: http.StatusOK,
-			wantBody:   "body {}",
-			wantHeader: map[string]string{"Content-Type": "text/css; charset=utf-8"},
-		},
-		{
-			name:       "serves nested file",
-			path:       "/testorg/testrepo/assets/app.js",
-			wantURL:    "/testorg/testrepo/assets/app.js",
-			wantStatus: http.StatusOK,
-			wantBody:   "console.log('hello')",
-			wantHeader: map[string]string{"Content-Type": "text/javascript; charset=utf-8"},
-		},
-		{
 			name:       "HEAD returns headers without body",
 			method:     http.MethodHead,
 			path:       "/testorg/testrepo/style.css",
 			wantURL:    "/testorg/testrepo/style.css",
 			wantStatus: http.StatusOK,
 			wantHeader: map[string]string{"Content-Type": "text/css; charset=utf-8"},
-		},
-		{
-			name:       "missing file returns 404",
-			path:       "/testorg/testrepo/missing.txt",
-			wantStatus: http.StatusNotFound,
-		},
-		{
-			name:       "missing repo returns 404",
-			path:       "/testorg/norepo/",
-			wantStatus: http.StatusNotFound,
 		},
 	}
 

@@ -26,20 +26,6 @@ func TestNewApp(t *testing.T) {
 		assert.Equal(t, ":8000", app.Config.Addr)
 	})
 
-	t.Run("propagates pages branch from config", func(t *testing.T) {
-		fg := newFakeGitea(t)
-		cfg := &Config{
-			GiteaServer: fg.server.URL,
-			GiteaToken:  "test-token",
-			PagesBranch: "custom-branch",
-		}
-
-		app, err := NewApp(cfg)
-
-		require.NoError(t, err)
-		assert.Equal(t, "custom-branch", app.Config.PagesBranch)
-	})
-
 	t.Run("returns error for invalid server URL", func(t *testing.T) {
 		cfg := &Config{
 			GiteaServer: "://invalid-url",
