@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -15,55 +16,54 @@ import (
 func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, nil)))
 
+	if err := run(); err != nil {
+		slog.Error("Fatal error", "error", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
 	cfg, err := LoadConfig()
 	if err != nil {
-		slog.Error("Failed to load config", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("load config: %w", err)
 	}
 
 	app, err := NewApp(cfg)
 	if err != nil {
-		slog.Error("Failed to initialize application", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("init application: %w", err)
 	}
+
 	server := app.newServer()
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	serverErr := make(chan error, 1)
 	go func() {
-		slog.Info("Starting server", "address", app.Config.Addr)
-		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("Server error", "error", err)
-			stop()
-		}
+		slog.Info("Starting server", "address", server.Addr)
+		serverErr <- server.ListenAndServe()
 	}()
 
-	<-ctx.Done()
+	select {
+	case err := <-serverErr:
+		return fmt.Errorf("server error: %w", err)
+	case <-ctx.Done():
+	}
+
 	slog.Info("Shutdown signal received")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		slog.Error("Server shutdown error", "error", err)
-	} else {
-		slog.Info("Server shutdown completed")
+		return fmt.Errorf("server shutdown: %w", err)
 	}
-}
 
-func (app *App) newServer() *http.Server {
-	mux := http.NewServeMux()
-
-	mux.HandleFunc("GET /health", handleHealth)
-	mux.HandleFunc("GET /{owner}/{repo}", handleRepoRedirect)
-	mux.HandleFunc("GET /{owner}/{repo}/{path...}", app.handlePages)
-
-	return &http.Server{
-		Addr:         app.Config.Addr,
-		Handler:      Logger(Recoverer(mux)),
-		IdleTimeout:  60 * time.Second,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
+	if err := <-serverErr; !errors.Is(err, http.ErrServerClosed) {
+		return fmt.Errorf("server error: %w", err)
 	}
+
+	slog.Info("Server shutdown completed")
+
+	return nil
 }

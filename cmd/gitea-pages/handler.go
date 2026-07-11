@@ -19,8 +19,9 @@ func (app *App) handlePages(w http.ResponseWriter, r *http.Request) {
 	rawPath := r.PathValue("path")
 
 	// Directory requests (root or trailing slash) serve index.html.
+	isDir := rawPath == "" || strings.HasSuffix(rawPath, "/")
 	filePath := rawPath
-	if filePath == "" || strings.HasSuffix(filePath, "/") {
+	if isDir {
 		filePath += "index.html"
 	}
 	if content, ok := app.getFile(owner, repo, filePath); ok {
@@ -29,9 +30,9 @@ func (app *App) handlePages(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Directory without trailing slash → redirect if its index.html exists.
-	if filePath == rawPath {
+	if !isDir {
 		if _, ok := app.getFile(owner, repo, rawPath+"/index.html"); ok {
-			http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently)
+			http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently) //nolint:gosec // G710
 			return
 		}
 	}
@@ -44,16 +45,16 @@ func writeContent(w http.ResponseWriter, filePath string, content []byte) {
 		w.Header().Set("Content-Type", ct)
 	}
 
-	if _, err := w.Write(content); err != nil { //nolint:gosec // G705: serving static files from Gitea repos is intentional
+	if _, err := w.Write(content); err != nil { //nolint:gosec // G705
 		slog.Error("Failed to write response", "error", err)
 	}
 }
 
 func (app *App) getFile(owner, repo, filePath string) ([]byte, bool) {
-	content, resp, err := app.Client.GetFile(owner, repo, app.Config.PagesBranch, filePath, true)
+	content, resp, err := app.client.GetFile(owner, repo, app.config.PagesBranch, filePath, true)
 	if err != nil {
 		if resp == nil || resp.StatusCode != http.StatusNotFound {
-			slog.Warn("gitea fetch failed", "owner", owner, "repo", repo, "path", filePath, "error", err)
+			slog.Warn("Failed to fetch from Gitea", "owner", owner, "repo", repo, "path", filePath, "error", err)
 		}
 		return nil, false
 	}
@@ -62,5 +63,5 @@ func (app *App) getFile(owner, repo, filePath string) ([]byte, bool) {
 
 // handleRepoRedirect redirects /{owner}/{repo} to /{owner}/{repo}/.
 func handleRepoRedirect(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently)
+	http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently) //nolint:gosec // G710
 }

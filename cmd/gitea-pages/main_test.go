@@ -73,7 +73,7 @@ func newFakeGitea(t *testing.T) *fakeGitea {
 }
 
 func (f *fakeGitea) newApp() *App {
-	return &App{Client: f.client, Config: &Config{PagesBranch: "gh-pages", Addr: ":8000"}}
+	return &App{client: f.client, config: &Config{PagesBranch: "gh-pages", Addr: ":8000"}}
 }
 
 func TestNewServerNonExistentRoute(t *testing.T) {
@@ -106,7 +106,7 @@ func TestNewServerMethodNotAllowed(t *testing.T) {
 // behavior including redirect chains that httptest.NewRecorder cannot exercise.
 func TestIntegration(t *testing.T) {
 	app := newFakeGitea(t).newApp()
-	app.Config.Addr = ":0"
+	app.config.Addr = ":0"
 	srv := httptest.NewServer(app.newServer().Handler)
 	t.Cleanup(srv.Close)
 

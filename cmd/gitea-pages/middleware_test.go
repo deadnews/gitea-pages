@@ -68,12 +68,6 @@ func TestLoggerMiddleware(t *testing.T) {
 		expectLogLevel slog.Level
 	}{
 		{
-			name:          "health endpoint not logged",
-			path:          "/health",
-			handlerStatus: http.StatusOK,
-			expectLogged:  false,
-		},
-		{
 			name:          "2xx not logged",
 			path:          "/query",
 			handlerStatus: http.StatusOK,
@@ -131,7 +125,7 @@ func TestLoggerMiddleware(t *testing.T) {
 
 			logOutput := buf.String()
 			if tt.expectLogged {
-				assert.Contains(t, logOutput, "request")
+				assert.Contains(t, logOutput, "Request")
 				assert.Contains(t, logOutput, tt.path)
 				assert.Contains(t, logOutput, "method=GET")
 				assert.Contains(t, logOutput, fmt.Sprintf("status=%d", tt.handlerStatus))
@@ -184,7 +178,7 @@ func TestRecovererMiddleware(t *testing.T) {
 		})
 
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
-		assert.Contains(t, buf.String(), "panic recovered")
+		assert.Contains(t, buf.String(), "Panic recovered")
 		assert.Contains(t, buf.String(), "test panic")
 	})
 
@@ -278,8 +272,8 @@ func TestMiddlewareChain(t *testing.T) {
 		})
 
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
-		assert.Contains(t, buf.String(), "panic recovered")
-		assert.Contains(t, buf.String(), "request")
+		assert.Contains(t, buf.String(), "Panic recovered")
+		assert.Contains(t, buf.String(), "Request")
 		assert.Contains(t, buf.String(), "status=500")
 	})
 }

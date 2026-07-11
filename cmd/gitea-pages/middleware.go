@@ -24,11 +24,6 @@ func (rw *responseWriter) Unwrap() http.ResponseWriter {
 // Logger logs failed requests with level based on status code.
 func Logger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/health" {
-			next.ServeHTTP(w, r)
-			return
-		}
-
 		start := time.Now()
 		rw := &responseWriter{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rw, r)
@@ -43,10 +38,10 @@ func Logger(next http.Handler) http.Handler {
 			return
 		}
 
-		slog.LogAttrs(r.Context(), level, "request",
+		slog.LogAttrs(r.Context(), level, "Request",
 			slog.String("method", r.Method),
 			slog.String("url", r.URL.RequestURI()),
-			slog.String("useragent", r.UserAgent()),
+			slog.String("user_agent", r.UserAgent()),
 			slog.Int("status", rw.status),
 			slog.Duration("duration", time.Since(start)),
 		)
@@ -58,7 +53,7 @@ func Recoverer(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
-				slog.Error("panic recovered", "error", err, "url", r.URL)
+				slog.Error("Panic recovered", "error", err, "url", r.URL)
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			}
 		}()

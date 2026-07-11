@@ -15,7 +15,7 @@ up:
 	go mod tidy
 	go mod verify
 up-ci:
-	prek auto-update --freeze
+	prek update --freeze
 	pindock run --update
 	pinact run --update
 

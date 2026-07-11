@@ -27,3 +27,6 @@ go.work.sum
 # Environments
 .env
 .env.dev
+
+# Built binary
+/gitea-pages

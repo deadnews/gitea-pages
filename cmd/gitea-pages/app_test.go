@@ -21,9 +21,9 @@ func TestNewApp(t *testing.T) {
 
 		require.NoError(t, err)
 		require.NotNil(t, app)
-		assert.NotNil(t, app.Client)
-		assert.Equal(t, "gh-pages", app.Config.PagesBranch)
-		assert.Equal(t, ":8000", app.Config.Addr)
+		assert.NotNil(t, app.client)
+		assert.Equal(t, "gh-pages", app.config.PagesBranch)
+		assert.Equal(t, ":8000", app.config.Addr)
 	})
 
 	t.Run("returns error for invalid server URL", func(t *testing.T) {
