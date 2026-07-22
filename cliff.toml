@@ -39,9 +39,7 @@ commit_parsers = [
 ]
 
 [changelog]
-postprocessors = [
-  { pattern = '<REPO>', replace = "https://github.com/deadnews/gitea-pages" },
-]
+postprocessors = [{ pattern = '<REPO>', replace = "https://github.com/deadnews/gitea-pages" }]
 header = """
 # Changelog\n
 """

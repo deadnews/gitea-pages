@@ -1,0 +1,103 @@
+version = "2"
+
+[linters]
+default = "none"
+enable = [
+  "asasalint",
+  "asciicheck",
+  "bidichk",
+  "bodyclose",
+  "containedctx",
+  "contextcheck",
+  "copyloopvar",
+  "dogsled",
+  "dupl",
+  "durationcheck",
+  "errcheck",
+  "errchkjson",
+  "errname",
+  "errorlint",
+  "exhaustive",
+  "exptostd",
+  "fatcontext",
+  "forcetypeassert",
+  "gochecknoinits",
+  "gocognit",
+  "goconst",
+  "gocritic",
+  "gocyclo",
+  "godoclint",
+  "godot",
+  "goprintffuncname",
+  "gosec",
+  "govet",
+  "iface",
+  "ineffassign",
+  "intrange",
+  "loggercheck",
+  "makezero",
+  "mirror",
+  "misspell",
+  "modernize",
+  "musttag",
+  "nakedret",
+  "nestif",
+  "nilerr",
+  "nilnesserr",
+  "nilnil",
+  "noctx",
+  "nolintlint",
+  "perfsprint",
+  "prealloc",
+  "predeclared",
+  "promlinter",
+  "reassign",
+  "recvcheck",
+  "revive",
+  "rowserrcheck",
+  "sloglint",
+  "sqlclosecheck",
+  "staticcheck",
+  "testifylint",
+  "thelper",
+  "tparallel",
+  "unconvert",
+  "unparam",
+  "unused",
+  "usestdlibvars",
+  "usetesting",
+  "wastedassign",
+  "whitespace",
+  "wrapcheck",
+]
+
+[linters.settings.goconst]
+ignore-tests    = true
+min-occurrences = 6
+
+[linters.settings.gocritic]
+enable-all = true
+
+[linters.settings.govet]
+enable-all = true
+disable    = ["fieldalignment", "shadow"]
+
+[linters.settings.nolintlint]
+require-specific    = true
+require-explanation = true
+
+[[linters.exclusions.rules]]
+source  = "^\\s*defer\\s+"
+linters = ["errcheck"]
+
+[[linters.exclusions.rules]]
+path    = "_test\\.go"
+text    = "unusedwrite"
+linters = ["govet"]
+
+[[linters.exclusions.rules]]
+path    = "_test\\.go"
+linters = ["errchkjson", "gocognit", "godoclint", "gosec", "lll"]
+
+[formatters]
+enable = ["gofumpt", "goimports"]
