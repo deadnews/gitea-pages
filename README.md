@@ -13,12 +13,14 @@
 docker pull ghcr.io/deadnews/gitea-pages
 ```
 
+See [`compose.dev.yml`](compose.dev.yml) for a Compose reference.
+
 ## Configuration
 
 | Variable             | Default    | Description                |
 | -------------------- | ---------- | -------------------------- |
 | `GITEA_PAGES_SERVER` |            | Gitea server URL           |
-| `GITEA_PAGES_TOKEN`  |            | Gitea API token            |
+| `GITEA_PAGES_TOKEN`  |            | Gitea API read token       |
 | `GITEA_PAGES_BRANCH` | `gh-pages` | Branch to serve pages from |
 | `GITEA_PAGES_ADDR`   | `:8000`    | Listen address             |
 
