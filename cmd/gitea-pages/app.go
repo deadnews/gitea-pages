@@ -16,7 +16,10 @@ type App struct {
 
 // NewApp creates a new App with the given configuration.
 func NewApp(cfg *Config) (*App, error) {
-	client, err := gitea.NewClient(cfg.GiteaServer, gitea.SetToken(cfg.GiteaToken))
+	client, err := gitea.NewClient(cfg.GiteaServer,
+		gitea.SetToken(cfg.GiteaToken),
+		gitea.SetHTTPClient(&http.Client{Timeout: 10 * time.Second}),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("create gitea client: %w", err)
 	}
