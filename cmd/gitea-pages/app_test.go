@@ -25,12 +25,16 @@ func newFakeGitea(t *testing.T) *fakeGitea {
 	t.Helper()
 
 	fg := &fakeGitea{}
+	// Keyed by "{owner}/{repo}/{ref}/{path}";
+	// an empty ref models Gitea falling back to the repository default branch.
 	files := map[string]string{
 		"testorg/testrepo/gh-pages/index.html":        "<html>index</html>",
 		"testorg/testrepo/gh-pages/style.css":         "body {}",
 		"testorg/testrepo/gh-pages/assets/app.js":     "console.log('hello')",
 		"testorg/testrepo/gh-pages/subdir/index.html": "<html>subdir</html>",
 		"testorg/testrepo/gh-pages/data":              "raw data",
+		"testorg/testrepo/gh-pages/a b.html":          "<html>spaced</html>",
+		"testorg/testrepo//default-only.txt":          "default branch content",
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

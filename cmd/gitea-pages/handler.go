@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"mime"
 	"net/http"
+	"net/url"
 	"path"
 	"strings"
 )
@@ -51,7 +52,12 @@ func writeContent(w http.ResponseWriter, filePath string, content []byte) {
 }
 
 func (app *App) getFile(owner, repo, filePath string) ([]byte, bool) {
-	content, resp, err := app.client.GetFile(owner, repo, app.config.PagesBranch, filePath, true)
+	escaped, ok := escapeFilePath(filePath)
+	if !ok {
+		return nil, false
+	}
+
+	content, resp, err := app.client.GetFile(owner, repo, app.config.PagesBranch, escaped, true)
 	if err != nil {
 		if resp == nil || resp.StatusCode != http.StatusNotFound {
 			slog.Warn("Failed to fetch from Gitea", "owner", owner, "repo", repo, "path", filePath, "error", err)
@@ -59,6 +65,19 @@ func (app *App) getFile(owner, repo, filePath string) ([]byte, bool) {
 		return nil, false
 	}
 	return content, true
+}
+
+// escapeFilePath encodes each segment so the path cannot alter the upstream
+// request URL, and reports false for any attempt to climb out of the repo.
+func escapeFilePath(filePath string) (string, bool) {
+	segments := strings.Split(filePath, "/")
+	for i, segment := range segments {
+		if segment == ".." {
+			return "", false
+		}
+		segments[i] = url.PathEscape(segment)
+	}
+	return strings.Join(segments, "/"), true
 }
 
 // handleRepoRedirect redirects /{owner}/{repo} to /{owner}/{repo}/.
