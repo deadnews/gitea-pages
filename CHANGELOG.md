@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.0.2-alpha.0](https://github.com/deadnews/gitea-pages/compare/v1.0.1...v1.0.2-alpha.0) - 2026-07-25
+
+### Bug fixes
+
+- bound `gitea` requests with a client timeout - ([5129e36](https://github.com/deadnews/gitea-pages/commit/5129e36f06d4ea172bf06a19e79a965318f0cf72))
+- escape path segments to keep the pages branch pinned - ([5e91211](https://github.com/deadnews/gitea-pages/commit/5e91211622cf526f4223affdb298528473855a03))
+
+### Refactor
+
+- unify startup and shutdown error handling - ([6083cf5](https://github.com/deadnews/gitea-pages/commit/6083cf549b62f4894f6986ca39c1eefd4aaf0969))
+- flatten `handlePages` ([#4](https://github.com/deadnews/gitea-pages/issues/4)) - ([1180ddb](https://github.com/deadnews/gitea-pages/commit/1180ddb91b1c193b25736ff3c8a29fc4058f54c2))
+- simplify `getFile` error handling - ([fb85374](https://github.com/deadnews/gitea-pages/commit/fb85374fca1cdb9d6d67e35425de8faf26b2fe0c))
+
+### Testing
+
+- simplify middleware tests and cover `run()` - ([23f94d2](https://github.com/deadnews/gitea-pages/commit/23f94d2c69f2ad3bbdc24ce322e6a833c08a0e13))
+
+### Chores
+
+- _(prek)_ migrate to toml - ([f00f415](https://github.com/deadnews/gitea-pages/commit/f00f4159ce25971723952b287872f011b6de1e67))
+
 ## [1.0.1](https://github.com/deadnews/gitea-pages/compare/v1.0.0...v1.0.1) - 2026-05-07
 
 ### Bug fixes

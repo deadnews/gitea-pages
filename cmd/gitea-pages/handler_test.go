@@ -83,6 +83,27 @@ func TestHandlePages(t *testing.T) {
 			path:       "/testorg/norepo/",
 			wantStatus: http.StatusNotFound,
 		},
+		{
+			name:       "serves file whose name needs escaping",
+			path:       "/testorg/testrepo/a%20b.html",
+			wantStatus: http.StatusOK,
+			wantBody:   "<html>spaced</html>",
+		},
+		{
+			name:       "rejects encoded parent traversal",
+			path:       "/testorg/testrepo/%2e%2e/%2e%2e/index.html",
+			wantStatus: http.StatusNotFound,
+		},
+		{
+			name:       "keeps branch pin against encoded query char",
+			path:       "/testorg/testrepo/default-only.txt%3Fx",
+			wantStatus: http.StatusNotFound,
+		},
+		{
+			name:       "keeps branch pin against encoded fragment char",
+			path:       "/testorg/testrepo/default-only.txt%23x",
+			wantStatus: http.StatusNotFound,
+		},
 	}
 
 	for _, tt := range tests {

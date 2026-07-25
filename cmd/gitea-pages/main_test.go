@@ -1,185 +1,100 @@
 package main
 
 import (
-	"fmt"
-	"io"
-	"net/http"
-	"net/http/httptest"
-	"strings"
-	"sync/atomic"
+	"net"
+	"os"
+	"os/signal"
+	"syscall"
 	"testing"
+	"time"
 
-	"code.gitea.io/sdk/gitea"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// fakeGitea is an in-memory Gitea API stub for tests.
-type fakeGitea struct {
-	server       *httptest.Server
-	client       *gitea.Client
-	fileRequests atomic.Int32
-}
-
-func newFakeGitea(t *testing.T) *fakeGitea {
+// freeAddr reserves and releases a port, returning an address free to bind.
+func freeAddr(t *testing.T) string {
 	t.Helper()
 
-	fg := &fakeGitea{}
-	files := map[string]string{
-		"testorg/testrepo/gh-pages/index.html":        "<html>index</html>",
-		"testorg/testrepo/gh-pages/style.css":         "body {}",
-		"testorg/testrepo/gh-pages/assets/app.js":     "console.log('hello')",
-		"testorg/testrepo/gh-pages/subdir/index.html": "<html>subdir</html>",
-		"testorg/testrepo/gh-pages/data":              "raw data",
-	}
+	var lc net.ListenConfig
+	listener, err := lc.Listen(t.Context(), "tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	require.NoError(t, listener.Close())
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		urlPath := r.URL.Path
+	return listener.Addr().String()
+}
 
-		// GET /api/v1/version - version check
-		if urlPath == "/api/v1/version" {
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"version":"1.22.0"}`))
-			return
+// waitListening blocks until addr accepts connections,
+// which means run already installed its signal handler.
+func waitListening(t *testing.T, addr string) {
+	t.Helper()
+
+	var d net.Dialer
+	require.Eventually(t, func() bool {
+		conn, err := d.DialContext(t.Context(), "tcp", addr)
+		if err != nil {
+			return false
 		}
+		_ = conn.Close()
 
-		// GET /api/v1/repos/{owner}/{repo}/media/{filepath}?ref={ref}
-		// Used by SDK GetFile with resolveLFS=true (Gitea >= 1.17)
-		prefix := "/api/v1/repos/"
-		if strings.HasPrefix(urlPath, prefix) {
-			rest := urlPath[len(prefix):]
-			parts := strings.SplitN(rest, "/", 4) // [owner, repo, "media", filepath]
-			if len(parts) == 4 && parts[2] == "media" {
-				fg.fileRequests.Add(1)
-				ref := r.URL.Query().Get("ref")
-				key := fmt.Sprintf("%s/%s/%s/%s", parts[0], parts[1], ref, parts[3])
-				if content, ok := files[key]; ok {
-					_, _ = w.Write([]byte(content))
-					return
-				}
-			}
-		}
+		return true
+	}, 10*time.Second, 10*time.Millisecond)
+}
 
-		http.NotFound(w, r)
-	}))
-	t.Cleanup(server.Close)
+// holdTerm keeps SIGTERM handled for the whole test,
+// so a signal that misses run fails the test instead of killing the binary.
+func holdTerm(t *testing.T) {
+	t.Helper()
 
-	client, err := gitea.NewClient(server.URL, gitea.SetToken("test-token"))
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGTERM)
+	t.Cleanup(func() { signal.Stop(sig) })
+}
+
+func TestRunConfigError(t *testing.T) {
+	t.Setenv("GITEA_PAGES_SERVER", "")
+	t.Setenv("GITEA_PAGES_TOKEN", "")
+
+	require.ErrorContains(t, run(), "load config")
+}
+
+func TestRunClientError(t *testing.T) {
+	t.Setenv("GITEA_PAGES_SERVER", "://invalid-url")
+	t.Setenv("GITEA_PAGES_TOKEN", "test-token")
+
+	require.ErrorContains(t, run(), "init application")
+}
+
+func TestRunListenError(t *testing.T) {
+	fg := newFakeGitea(t)
+	t.Setenv("GITEA_PAGES_SERVER", fg.server.URL)
+	t.Setenv("GITEA_PAGES_TOKEN", "test-token")
+	t.Setenv("GITEA_PAGES_ADDR", "127.0.0.1:99999")
+
+	require.ErrorContains(t, run(), "server error")
+}
+
+func TestRunGracefulShutdown(t *testing.T) {
+	fg := newFakeGitea(t)
+	addr := freeAddr(t)
+	t.Setenv("GITEA_PAGES_SERVER", fg.server.URL)
+	t.Setenv("GITEA_PAGES_TOKEN", "test-token")
+	t.Setenv("GITEA_PAGES_ADDR", addr)
+
+	holdTerm(t)
+
+	done := make(chan error, 1)
+	go func() { done <- run() }()
+
+	waitListening(t, addr)
+
+	proc, err := os.FindProcess(os.Getpid())
 	require.NoError(t, err)
+	require.NoError(t, proc.Signal(syscall.SIGTERM))
 
-	fg.server = server
-	fg.client = client
-	return fg
-}
-
-func (f *fakeGitea) newApp() *App {
-	return &App{client: f.client, config: &Config{PagesBranch: "gh-pages", Addr: ":8000"}}
-}
-
-func TestNewServerNonExistentRoute(t *testing.T) {
-	app := newFakeGitea(t).newApp()
-	server := app.newServer()
-
-	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "/nonexistent", http.NoBody)
-	require.NoError(t, err)
-
-	rr := httptest.NewRecorder()
-	server.Handler.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusNotFound, rr.Code)
-}
-
-func TestNewServerMethodNotAllowed(t *testing.T) {
-	app := newFakeGitea(t).newApp()
-	server := app.newServer()
-
-	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "/health", http.NoBody)
-	require.NoError(t, err)
-
-	rr := httptest.NewRecorder()
-	server.Handler.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusMethodNotAllowed, rr.Code)
-}
-
-// TestIntegration uses a real HTTP server and client to verify end-to-end
-// behavior including redirect chains that httptest.NewRecorder cannot exercise.
-func TestIntegration(t *testing.T) {
-	app := newFakeGitea(t).newApp()
-	app.config.Addr = ":0"
-	srv := httptest.NewServer(app.newServer().Handler)
-	t.Cleanup(srv.Close)
-
-	client := srv.Client()
-
-	tests := []struct {
-		name       string
-		method     string
-		path       string
-		wantURL    string // expected final URL path after redirects
-		wantStatus int
-		wantBody   string
-		wantHeader map[string]string
-	}{
-		{
-			name:       "repo root redirect chain serves index",
-			path:       "/testorg/testrepo",
-			wantURL:    "/testorg/testrepo/",
-			wantStatus: http.StatusOK,
-			wantBody:   "<html>index</html>",
-			wantHeader: map[string]string{"Content-Type": "text/html; charset=utf-8"},
-		},
-		{
-			name:       "directory redirect chain serves index",
-			path:       "/testorg/testrepo/subdir",
-			wantURL:    "/testorg/testrepo/subdir/",
-			wantStatus: http.StatusOK,
-			wantBody:   "<html>subdir</html>",
-		},
-		{
-			name:       "HEAD returns headers without body",
-			method:     http.MethodHead,
-			path:       "/testorg/testrepo/style.css",
-			wantURL:    "/testorg/testrepo/style.css",
-			wantStatus: http.StatusOK,
-			wantHeader: map[string]string{"Content-Type": "text/css; charset=utf-8"},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			method := tt.method
-			if method == "" {
-				method = http.MethodGet
-			}
-
-			req, err := http.NewRequestWithContext(t.Context(), method, srv.URL+tt.path, http.NoBody)
-			require.NoError(t, err)
-
-			resp, err := client.Do(req)
-			require.NoError(t, err)
-			defer resp.Body.Close()
-
-			assert.Equal(t, tt.wantStatus, resp.StatusCode)
-
-			if tt.wantURL != "" {
-				assert.Equal(t, tt.wantURL, resp.Request.URL.Path)
-			}
-
-			body, err := io.ReadAll(resp.Body)
-			require.NoError(t, err)
-
-			if tt.wantBody != "" {
-				assert.Equal(t, tt.wantBody, string(body))
-			}
-
-			if tt.method == http.MethodHead {
-				assert.Empty(t, body)
-			}
-
-			for k, v := range tt.wantHeader {
-				assert.Equal(t, v, resp.Header.Get(k))
-			}
-		})
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(15 * time.Second):
+		t.Fatal("run did not return after SIGTERM")
 	}
 }
