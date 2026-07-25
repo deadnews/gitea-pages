@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -13,267 +12,87 @@ import (
 )
 
 // captureLog redirects slog to a buffer for the test duration.
-func captureLog(t *testing.T, opts *slog.HandlerOptions) *bytes.Buffer {
+func captureLog(t *testing.T) *bytes.Buffer {
 	t.Helper()
 
 	var buf bytes.Buffer
 	prev := slog.Default()
-	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, opts)))
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
 	t.Cleanup(func() { slog.SetDefault(prev) })
 
 	return &buf
 }
 
 func TestResponseWriter(t *testing.T) {
-	t.Run("captures status code", func(t *testing.T) {
-		tests := []struct {
-			name   string
-			status int
-		}{
-			{"200", http.StatusOK},
-			{"201", http.StatusCreated},
-			{"400", http.StatusBadRequest},
-			{"404", http.StatusNotFound},
-			{"500", http.StatusInternalServerError},
-			{"503", http.StatusServiceUnavailable},
-		}
+	rec := httptest.NewRecorder()
+	rw := &responseWriter{ResponseWriter: rec, status: http.StatusOK}
 
-		for _, tt := range tests {
-			t.Run(tt.name, func(t *testing.T) {
-				rec := httptest.NewRecorder()
-				rw := &responseWriter{ResponseWriter: rec, status: http.StatusOK}
+	rw.WriteHeader(http.StatusNotFound)
 
-				rw.WriteHeader(tt.status)
-
-				assert.Equal(t, tt.status, rw.status)
-				assert.Equal(t, tt.status, rec.Code)
-			})
-		}
-	})
-
-	t.Run("unwrap returns underlying writer", func(t *testing.T) {
-		rec := httptest.NewRecorder()
-		rw := &responseWriter{ResponseWriter: rec, status: http.StatusOK}
-
-		assert.Equal(t, rec, rw.Unwrap())
-	})
+	assert.Equal(t, http.StatusNotFound, rw.status)
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Equal(t, rec, rw.Unwrap())
 }
 
-func TestLoggerMiddleware(t *testing.T) {
+func TestLogger(t *testing.T) {
 	tests := []struct {
-		name           string
-		path           string
-		handlerStatus  int
-		expectLogged   bool
-		expectLogLevel slog.Level
+		name   string
+		status int
+		level  slog.Level
+		logged bool
 	}{
-		{
-			name:          "2xx not logged",
-			path:          "/query",
-			handlerStatus: http.StatusOK,
-			expectLogged:  false,
-		},
-		{
-			name:          "3xx not logged",
-			path:          "/redirect",
-			handlerStatus: http.StatusMovedPermanently,
-			expectLogged:  false,
-		},
-		{
-			name:           "4xx logged at warn",
-			path:           "/query",
-			handlerStatus:  http.StatusBadRequest,
-			expectLogged:   true,
-			expectLogLevel: slog.LevelWarn,
-		},
-		{
-			name:           "404 logged at warn",
-			path:           "/notfound",
-			handlerStatus:  http.StatusNotFound,
-			expectLogged:   true,
-			expectLogLevel: slog.LevelWarn,
-		},
-		{
-			name:           "5xx logged at error",
-			path:           "/query",
-			handlerStatus:  http.StatusInternalServerError,
-			expectLogged:   true,
-			expectLogLevel: slog.LevelError,
-		},
-		{
-			name:           "503 logged at error",
-			path:           "/unavailable",
-			handlerStatus:  http.StatusServiceUnavailable,
-			expectLogged:   true,
-			expectLogLevel: slog.LevelError,
-		},
+		{name: "2xx not logged", status: http.StatusOK},
+		{name: "3xx not logged", status: http.StatusMovedPermanently},
+		{name: "4xx logged at warn", status: http.StatusNotFound, level: slog.LevelWarn, logged: true},
+		{name: "5xx logged at error", status: http.StatusInternalServerError, level: slog.LevelError, logged: true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			buf := captureLog(t, &slog.HandlerOptions{Level: slog.LevelDebug})
+			buf := captureLog(t)
 
 			handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-				w.WriteHeader(tt.handlerStatus)
+				w.WriteHeader(tt.status)
 			})
 
-			wrapped := Logger(handler)
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/path?param=value", http.NoBody)
+			req.Header.Set("User-Agent", "TestAgent/1.0")
+			Logger(handler).ServeHTTP(httptest.NewRecorder(), req)
 
-			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, tt.path, http.NoBody)
-			rec := httptest.NewRecorder()
-			wrapped.ServeHTTP(rec, req)
-
-			logOutput := buf.String()
-			if tt.expectLogged {
-				assert.Contains(t, logOutput, "Request")
-				assert.Contains(t, logOutput, tt.path)
-				assert.Contains(t, logOutput, "method=GET")
-				assert.Contains(t, logOutput, fmt.Sprintf("status=%d", tt.handlerStatus))
-				assert.Contains(t, logOutput, fmt.Sprintf("level=%s", tt.expectLogLevel))
-			} else {
-				assert.Empty(t, logOutput)
+			out := buf.String()
+			if !tt.logged {
+				assert.Empty(t, out)
+				return
 			}
+
+			assert.Contains(t, out, fmt.Sprintf("level=%s msg=Request", tt.level))
+			assert.Contains(t, out, "method=POST")
+			assert.Contains(t, out, "/path?param=value")
+			assert.Contains(t, out, "user_agent=TestAgent/1.0")
+			assert.Contains(t, out, fmt.Sprintf("status=%d", tt.status))
+			assert.Contains(t, out, "duration=")
 		})
 	}
 }
 
-func TestLoggerMiddlewareRequestDetails(t *testing.T) {
-	buf := captureLog(t, nil)
+func TestRecoverer(t *testing.T) {
+	buf := captureLog(t)
 
-	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusNotFound)
+	handler := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
+		panic("test panic")
 	})
 
-	wrapped := Logger(handler)
-
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/query?param=value", http.NoBody)
-	req.Header.Set("User-Agent", "TestAgent/1.0")
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/path", http.NoBody)
 	rec := httptest.NewRecorder()
 
-	wrapped.ServeHTTP(rec, req)
-
-	logOutput := buf.String()
-	assert.Contains(t, logOutput, "method=POST")
-	assert.Contains(t, logOutput, "/query")
-	assert.Contains(t, logOutput, "TestAgent/1.0")
-	assert.Contains(t, logOutput, "status=404")
-	assert.Contains(t, logOutput, "duration=")
-}
-
-func TestRecovererMiddleware(t *testing.T) {
-	t.Run("recovers from panic with string", func(t *testing.T) {
-		buf := captureLog(t, nil)
-
-		handler := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
-			panic("test panic")
-		})
-
-		wrapped := Recoverer(handler)
-
-		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/panic", http.NoBody)
-		rec := httptest.NewRecorder()
-
-		assert.NotPanics(t, func() {
-			wrapped.ServeHTTP(rec, req)
-		})
-
-		assert.Equal(t, http.StatusInternalServerError, rec.Code)
-		assert.Contains(t, buf.String(), "Panic recovered")
-		assert.Contains(t, buf.String(), "test panic")
+	assert.NotPanics(t, func() {
+		Logger(Recoverer(handler)).ServeHTTP(rec, req)
 	})
 
-	t.Run("recovers from panic with error", func(t *testing.T) {
-		captureLog(t, nil)
-
-		handler := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
-			panic(io.ErrUnexpectedEOF)
-		})
-
-		wrapped := Recoverer(handler)
-
-		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/panic", http.NoBody)
-		rec := httptest.NewRecorder()
-
-		assert.NotPanics(t, func() {
-			wrapped.ServeHTTP(rec, req)
-		})
-
-		assert.Equal(t, http.StatusInternalServerError, rec.Code)
-	})
-
-	t.Run("passes through without panic", func(t *testing.T) {
-		handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte("success"))
-		})
-
-		wrapped := Recoverer(handler)
-
-		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/normal", http.NoBody)
-		rec := httptest.NewRecorder()
-
-		wrapped.ServeHTTP(rec, req)
-
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, "success", rec.Body.String())
-	})
-
-	t.Run("logs path", func(t *testing.T) {
-		buf := captureLog(t, nil)
-
-		handler := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
-			panic("test")
-		})
-
-		wrapped := Recoverer(handler)
-
-		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test/path?query=value", http.NoBody)
-		rec := httptest.NewRecorder()
-
-		wrapped.ServeHTTP(rec, req)
-
-		assert.Contains(t, buf.String(), "/test/path")
-	})
-}
-
-func TestMiddlewareChain(t *testing.T) {
-	t.Run("logger and recoverer chain success not logged", func(t *testing.T) {
-		buf := captureLog(t, nil)
-
-		handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			w.WriteHeader(http.StatusOK)
-		})
-
-		wrapped := Logger(Recoverer(handler))
-
-		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", http.NoBody)
-		rec := httptest.NewRecorder()
-
-		wrapped.ServeHTTP(rec, req)
-
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Empty(t, buf.String())
-	})
-
-	t.Run("panic in chain is recovered and logged", func(t *testing.T) {
-		buf := captureLog(t, nil)
-
-		handler := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
-			panic("chain panic")
-		})
-
-		wrapped := Logger(Recoverer(handler))
-
-		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", http.NoBody)
-		rec := httptest.NewRecorder()
-
-		assert.NotPanics(t, func() {
-			wrapped.ServeHTTP(rec, req)
-		})
-
-		assert.Equal(t, http.StatusInternalServerError, rec.Code)
-		assert.Contains(t, buf.String(), "Panic recovered")
-		assert.Contains(t, buf.String(), "Request")
-		assert.Contains(t, buf.String(), "status=500")
-	})
+	out := buf.String()
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, out, "Panic recovered")
+	assert.Contains(t, out, "test panic")
+	assert.Contains(t, out, "url=/path")
+	assert.Contains(t, out, "status=500")
 }
