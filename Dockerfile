@@ -25,7 +25,7 @@ COPY --from=ghcr.io/tarampampam/microcheck:1.4.0@sha256:c9f79cd408626de7c10f2d48
 
 COPY --from=builder /bin/gitea-pages /bin/gitea-pages
 
-USER nonroot:nonroot
+USER 65532:65532
 HEALTHCHECK NONE
 EXPOSE 8000
 
