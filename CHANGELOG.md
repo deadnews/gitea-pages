@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.0.3](https://github.com/deadnews/gitea-pages/compare/v1.0.2...v1.0.3) - 2026-08-22
+
+### Documentation
+
+- _(readme)_ link `compose.dev.yml` - ([8a56d15](https://github.com/deadnews/gitea-pages/commit/8a56d159db2a581ffbe4f9a20f806348c72386b1))
+
+### Chores
+
+- _(docker)_ run as a numeric uid - ([e42ec53](https://github.com/deadnews/gitea-pages/commit/e42ec53ff6e09ff4bde687f3e92b218f89795775))
+- _(make)_ add `alpha` target for pre-release tags - ([733895b](https://github.com/deadnews/gitea-pages/commit/733895be810d1206bf3ed3ae56736b2604cd8015))
+
+### Dependencies
+
+- update to `go:1.27` - ([69ef639](https://github.com/deadnews/gitea-pages/commit/69ef639ceecdeb57caaea465e59d3c8bdf023d7d))
+
 ## [1.0.2](https://github.com/deadnews/gitea-pages/compare/v1.0.1...v1.0.2) - 2026-07-25
 
 ### Bug fixes
