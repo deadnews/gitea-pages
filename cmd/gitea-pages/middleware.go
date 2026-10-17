@@ -54,7 +54,8 @@ func Recoverer(next http.Handler) http.Handler {
 		defer func() {
 			if err := recover(); err != nil {
 				slog.Error("Panic recovered", "error", err, "url", r.URL)
-				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				code := http.StatusInternalServerError
+				http.Error(w, http.StatusText(code), code)
 			}
 		}()
 		next.ServeHTTP(w, r)

@@ -33,7 +33,8 @@ func (app *App) handlePages(w http.ResponseWriter, r *http.Request) {
 	// Directory without trailing slash → redirect if its index.html exists.
 	if !isDir {
 		if _, ok := app.getFile(owner, repo, rawPath+"/index.html"); ok {
-			http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently) //nolint:gosec // G710
+			dir := r.URL.Path + "/"
+			http.Redirect(w, r, dir, http.StatusMovedPermanently) //nolint:gosec // G710
 			return
 		}
 	}
@@ -57,10 +58,12 @@ func (app *App) getFile(owner, repo, filePath string) ([]byte, bool) {
 		return nil, false
 	}
 
-	content, resp, err := app.client.GetFile(owner, repo, app.config.PagesBranch, escaped, true)
+	content, resp, err := app.client.GetFile(
+		owner, repo, app.config.PagesBranch, escaped, true)
 	if err != nil {
 		if resp == nil || resp.StatusCode != http.StatusNotFound {
-			slog.Warn("Failed to fetch from Gitea", "owner", owner, "repo", repo, "path", filePath, "error", err)
+			slog.Warn("Failed to fetch from Gitea",
+				"owner", owner, "repo", repo, "path", filePath, "error", err)
 		}
 		return nil, false
 	}
