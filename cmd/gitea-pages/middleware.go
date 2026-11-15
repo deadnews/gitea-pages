@@ -3,6 +3,7 @@ package main
 import (
 	"log/slog"
 	"net/http"
+	"runtime/debug"
 	"time"
 )
 
@@ -53,7 +54,8 @@ func Recoverer(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
-				slog.Error("Panic recovered", "error", err, "url", r.URL)
+				stack := string(debug.Stack())
+				slog.Error("Panic recovered", "error", err, "url", r.URL, "stack", stack)
 				code := http.StatusInternalServerError
 				http.Error(w, http.StatusText(code), code)
 			}

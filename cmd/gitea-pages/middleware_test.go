@@ -93,6 +93,7 @@ func TestRecoverer(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	assert.Contains(t, out, "Panic recovered")
 	assert.Contains(t, out, "test panic")
+	assert.Contains(t, out, "middleware_test.go")
 	assert.Contains(t, out, "url=/path")
 	assert.Contains(t, out, "status=500")
 }
