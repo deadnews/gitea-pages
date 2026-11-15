@@ -76,20 +76,20 @@ func newFakeGitea(t *testing.T) *fakeGitea {
 }
 
 func (f *fakeGitea) newApp() *App {
-	return &App{client: f.client, config: &Config{PagesBranch: "gh-pages", Addr: ":8000"}}
+	return &App{client: f.client, config: &config{PagesBranch: "gh-pages", Addr: ":8000"}}
 }
 
 func TestNewApp(t *testing.T) {
 	t.Run("creates app with valid config", func(t *testing.T) {
 		fg := newFakeGitea(t)
-		cfg := &Config{
+		cfg := &config{
 			GiteaServer: fg.server.URL,
 			GiteaToken:  "test-token",
 			PagesBranch: "gh-pages",
 			Addr:        ":8000",
 		}
 
-		app, err := NewApp(cfg)
+		app, err := newApp(cfg)
 
 		require.NoError(t, err)
 		require.NotNil(t, app)
@@ -98,13 +98,13 @@ func TestNewApp(t *testing.T) {
 	})
 
 	t.Run("returns error for invalid server URL", func(t *testing.T) {
-		cfg := &Config{
+		cfg := &config{
 			GiteaServer: "://invalid-url",
 			GiteaToken:  "test-token",
 			PagesBranch: "gh-pages",
 		}
 
-		app, err := NewApp(cfg)
+		app, err := newApp(cfg)
 
 		require.Error(t, err)
 		assert.Nil(t, app)

@@ -57,7 +57,7 @@ func TestLogger(t *testing.T) {
 
 			req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/path?param=value", http.NoBody)
 			req.Header.Set("User-Agent", "TestAgent/1.0")
-			Logger(handler).ServeHTTP(httptest.NewRecorder(), req)
+			logger(handler).ServeHTTP(httptest.NewRecorder(), req)
 
 			out := buf.String()
 			if !tt.logged {
@@ -86,7 +86,7 @@ func TestRecoverer(t *testing.T) {
 	rec := httptest.NewRecorder()
 
 	assert.NotPanics(t, func() {
-		Logger(Recoverer(handler)).ServeHTTP(rec, req)
+		logger(recoverer(handler)).ServeHTTP(rec, req)
 	})
 
 	out := buf.String()

@@ -12,7 +12,7 @@ func TestLoadConfig(t *testing.T) {
 		name    string
 		envVars map[string]string
 		wantErr bool
-		check   func(t *testing.T, cfg *Config)
+		check   func(t *testing.T, cfg *config)
 	}{
 		{
 			name:    "missing GITEA_PAGES_SERVER",
@@ -30,7 +30,7 @@ func TestLoadConfig(t *testing.T) {
 				"GITEA_PAGES_SERVER": "https://gitea.example.com",
 				"GITEA_PAGES_TOKEN":  "test-token",
 			},
-			check: func(t *testing.T, cfg *Config) {
+			check: func(t *testing.T, cfg *config) {
 				t.Helper()
 				assert.Equal(t, "https://gitea.example.com", cfg.GiteaServer)
 				assert.Equal(t, "test-token", cfg.GiteaToken)
@@ -46,7 +46,7 @@ func TestLoadConfig(t *testing.T) {
 				"GITEA_PAGES_BRANCH": "pages",
 				"GITEA_PAGES_ADDR":   ":9000",
 			},
-			check: func(t *testing.T, cfg *Config) {
+			check: func(t *testing.T, cfg *config) {
 				t.Helper()
 				assert.Equal(t, "pages", cfg.PagesBranch)
 				assert.Equal(t, ":9000", cfg.Addr)
@@ -65,7 +65,7 @@ func TestLoadConfig(t *testing.T) {
 				t.Setenv(k, v)
 			}
 
-			cfg, err := LoadConfig()
+			cfg, err := loadConfig()
 
 			if tt.wantErr {
 				require.Error(t, err)

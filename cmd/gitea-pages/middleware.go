@@ -22,8 +22,8 @@ func (rw *responseWriter) Unwrap() http.ResponseWriter {
 	return rw.ResponseWriter
 }
 
-// Logger logs failed requests with level based on status code.
-func Logger(next http.Handler) http.Handler {
+// logger logs failed requests with level based on status code.
+func logger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		rw := &responseWriter{ResponseWriter: w, status: http.StatusOK}
@@ -49,8 +49,7 @@ func Logger(next http.Handler) http.Handler {
 	})
 }
 
-// Recoverer recovers from panics and returns 500.
-func Recoverer(next http.Handler) http.Handler {
+func recoverer(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {

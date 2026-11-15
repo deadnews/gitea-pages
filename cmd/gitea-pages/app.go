@@ -11,11 +11,10 @@ import (
 // App holds application dependencies.
 type App struct {
 	client *gitea.Client
-	config *Config
+	config *config
 }
 
-// NewApp creates a new App with the given configuration.
-func NewApp(cfg *Config) (*App, error) {
+func newApp(cfg *config) (*App, error) {
 	client, err := gitea.NewClient(cfg.GiteaServer,
 		gitea.SetToken(cfg.GiteaToken),
 		gitea.SetHTTPClient(&http.Client{Timeout: 10 * time.Second}),
@@ -35,7 +34,7 @@ func (app *App) newServer() *http.Server {
 
 	return &http.Server{
 		Addr:         app.config.Addr,
-		Handler:      Logger(Recoverer(mux)),
+		Handler:      logger(recoverer(mux)),
 		IdleTimeout:  60 * time.Second,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,

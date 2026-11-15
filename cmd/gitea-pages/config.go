@@ -6,17 +6,16 @@ import (
 	"os"
 )
 
-// Config holds application configuration.
-type Config struct {
+type config struct {
 	GiteaServer string
 	GiteaToken  string
 	PagesBranch string
 	Addr        string
 }
 
-// LoadConfig loads configuration from environment variables.
-func LoadConfig() (*Config, error) {
-	cfg := &Config{
+// loadConfig loads configuration from environment variables.
+func loadConfig() (*config, error) {
+	cfg := &config{
 		GiteaServer: os.Getenv("GITEA_PAGES_SERVER"),
 		GiteaToken:  os.Getenv("GITEA_PAGES_TOKEN"),
 		PagesBranch: cmp.Or(os.Getenv("GITEA_PAGES_BRANCH"), "gh-pages"),
