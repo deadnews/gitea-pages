@@ -144,6 +144,32 @@ func TestHandlePagesDirectoryMissSingleFetch(t *testing.T) {
 	assert.Equal(t, int32(1), fg.fileRequests.Load())
 }
 
+func TestHandlePagesDotSegments(t *testing.T) {
+	tests := []struct {
+		name string
+		path string
+	}{
+		{name: "parent as owner", path: "/%2e%2e/repos/testrepo/index.html"},
+		{name: "current as owner", path: "/%2e/testorg/testrepo/index.html"},
+		{name: "parent as repo", path: "/testorg/%2e%2e/testrepo/index.html"},
+		{name: "current in file path", path: "/testorg/testrepo/%2e/index.html"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fg := newFakeGitea(t)
+			server := fg.newApp().newServer()
+
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, tt.path, http.NoBody)
+			rec := httptest.NewRecorder()
+			server.Handler.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusNotFound, rec.Code)
+			assert.Zero(t, fg.fileRequests.Load())
+		})
+	}
+}
+
 func TestHandlePagesUpstreamFailure(t *testing.T) {
 	fg := newFakeGitea(t)
 	closed := httptest.NewServer(http.NotFoundHandler())

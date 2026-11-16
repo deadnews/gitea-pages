@@ -72,7 +72,7 @@ func (app *App) getFile(ctx context.Context, owner, repo, filePath string) ([]by
 
 func (app *App) fetchFile(ctx context.Context, owner, repo, filePath string) ([]byte, error) {
 	escaped, ok := escapeFilePath(filePath)
-	if !ok {
+	if !ok || isDotSegment(owner) || isDotSegment(repo) {
 		return nil, errNotFound
 	}
 
@@ -108,16 +108,21 @@ func (app *App) fetchFile(ctx context.Context, owner, repo, filePath string) ([]
 }
 
 // escapeFilePath encodes each segment so the path cannot alter the upstream
-// request URL, and reports false for any attempt to climb out of the repo.
+// request URL, and reports false for a dot segment.
 func escapeFilePath(filePath string) (string, bool) {
 	segments := strings.Split(filePath, "/")
 	for i, segment := range segments {
-		if segment == ".." {
+		if isDotSegment(segment) {
 			return "", false
 		}
 		segments[i] = url.PathEscape(segment)
 	}
 	return strings.Join(segments, "/"), true
+}
+
+// isDotSegment reports a segment the upstream would resolve to another path.
+func isDotSegment(segment string) bool {
+	return segment == "." || segment == ".."
 }
 
 // handleRepoRedirect redirects /{owner}/{repo} to /{owner}/{repo}/.
