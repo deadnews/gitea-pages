@@ -116,8 +116,7 @@ func TestNewServerNonExistentRoute(t *testing.T) {
 	app := newFakeGitea(t).newApp()
 	server := app.newServer()
 
-	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "/nonexistent", http.NoBody)
-	require.NoError(t, err)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/nonexistent", http.NoBody)
 
 	rr := httptest.NewRecorder()
 	server.Handler.ServeHTTP(rr, req)
@@ -129,8 +128,7 @@ func TestNewServerMethodNotAllowed(t *testing.T) {
 	app := newFakeGitea(t).newApp()
 	server := app.newServer()
 
-	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "/health", http.NoBody)
-	require.NoError(t, err)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/health", http.NoBody)
 
 	rr := httptest.NewRecorder()
 	server.Handler.ServeHTTP(rr, req)

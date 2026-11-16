@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestHandleHealth(t *testing.T) {
@@ -114,8 +113,7 @@ func TestHandlePages(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, tt.path, http.NoBody)
-			require.NoError(t, err)
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, tt.path, http.NoBody)
 
 			rec := httptest.NewRecorder()
 			server.Handler.ServeHTTP(rec, req)
@@ -137,8 +135,7 @@ func TestHandlePagesDirectoryMissSingleFetch(t *testing.T) {
 	fg := newFakeGitea(t)
 	server := fg.newApp().newServer()
 
-	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "/testorg/testrepo/nonexistent/", http.NoBody)
-	require.NoError(t, err)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/testorg/testrepo/nonexistent/", http.NoBody)
 
 	rec := httptest.NewRecorder()
 	server.Handler.ServeHTTP(rec, req)
@@ -175,8 +172,7 @@ func TestHandleRepoRedirect(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, tt.path, http.NoBody)
-			require.NoError(t, err)
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, tt.path, http.NoBody)
 
 			rec := httptest.NewRecorder()
 			server.Handler.ServeHTTP(rec, req)
