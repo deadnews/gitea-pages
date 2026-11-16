@@ -1,5 +1,40 @@
 # Changelog
 
+## [1.1.0](https://github.com/deadnews/gitea-pages/compare/v1.0.3...v1.1.0) - 2026-11-16
+
+### Features
+
+- send `content-length` with served files - ([ddb0423](https://github.com/deadnews/gitea-pages/commit/ddb0423357713eb526d7a953e2a05a12e75ade50))
+- log the stack trace of a recovered panic - ([98a010b](https://github.com/deadnews/gitea-pages/commit/98a010bfb5e0397d5a460841584ade14decefa83))
+
+### Bug fixes
+
+- reject dot segments in owner, repo and file path - ([fc6ad4a](https://github.com/deadnews/gitea-pages/commit/fc6ad4a960b0840f227870818eae0391d9e27f8c))
+- redirect to the escaped request path - ([a0ae184](https://github.com/deadnews/gitea-pages/commit/a0ae18434df9f5cec2b63e11839916aec42eb8ec))
+- shut down within docker's stop grace period - ([418244e](https://github.com/deadnews/gitea-pages/commit/418244e89cedd9f430627190c6fa97c58aa0d57b))
+
+### Refactor
+
+- replace the gitea sdk with `net/http` - ([3d4d378](https://github.com/deadnews/gitea-pages/commit/3d4d3787c8358dca8a7208ce10998e8aa7d7ae23))
+- unexport identifiers in package `main` - ([bb8ca62](https://github.com/deadnews/gitea-pages/commit/bb8ca62cf8e6f8c11d261ad814ccfb1832eb1c63))
+
+### Testing
+
+- build handler requests with `httptest.NewRequestWithContext` - ([edb4ba1](https://github.com/deadnews/gitea-pages/commit/edb4ba10dfe59256fda4597503c859d03acd2560))
+
+### Styling
+
+- break long lines - ([190e706](https://github.com/deadnews/gitea-pages/commit/190e706e3e51a3dc75ea21a52902e21883e67980))
+
+### Chores
+
+- _(make)_ default `tag` to bumped version - ([1d5b635](https://github.com/deadnews/gitea-pages/commit/1d5b635c7db539e2458fc7be65f0a62898ee0565))
+- _(prek)_ build `golangci-lint` with a prek-managed go - ([5e459bb](https://github.com/deadnews/gitea-pages/commit/5e459bb22d1cb48db168e1be1f7a7de592b90072))
+
+### Dependencies
+
+- update deps - ([b367e32](https://github.com/deadnews/gitea-pages/commit/b367e328b7541ee72894c9887156993d1d6564e5))
+
 ## [1.0.3](https://github.com/deadnews/gitea-pages/compare/v1.0.2...v1.0.3) - 2026-08-22
 
 ### Documentation
