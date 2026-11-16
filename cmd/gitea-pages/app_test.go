@@ -34,6 +34,7 @@ func newFakeGitea(t *testing.T) *fakeGitea {
 		"testorg/testrepo/gh-pages/subdir/index.html": "<html>subdir</html>",
 		"testorg/testrepo/gh-pages/data":              "raw data",
 		"testorg/testrepo/gh-pages/a b.html":          "<html>spaced</html>",
+		"testorg/testrepo/gh-pages/a?b/index.html":    "<html>query char</html>",
 		"testorg/testrepo//default-only.txt":          "default branch content",
 	}
 

@@ -63,6 +63,12 @@ func TestHandlePages(t *testing.T) {
 			wantHeader: map[string]string{"Location": "/testorg/testrepo/subdir/"},
 		},
 		{
+			name:       "redirects directory whose name needs escaping",
+			path:       "/testorg/testrepo/a%3Fb",
+			wantStatus: http.StatusMovedPermanently,
+			wantHeader: map[string]string{"Location": "/testorg/testrepo/a%3Fb/"},
+		},
+		{
 			name:       "serves file without recognized extension",
 			path:       "/testorg/testrepo/data",
 			wantStatus: http.StatusOK,
@@ -145,12 +151,38 @@ func TestHandleRepoRedirect(t *testing.T) {
 	app := newFakeGitea(t).newApp()
 	server := app.newServer()
 
-	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "/testorg/testrepo", http.NoBody)
-	require.NoError(t, err)
+	tests := []struct {
+		name         string
+		path         string
+		wantLocation string
+	}{
+		{
+			name:         "adds trailing slash",
+			path:         "/testorg/testrepo",
+			wantLocation: "/testorg/testrepo/",
+		},
+		{
+			name:         "keeps encoded slash from targeting another host",
+			path:         "/%2Fevil.example/x",
+			wantLocation: "/%2Fevil.example/x/",
+		},
+		{
+			name:         "keeps encoded backslash from targeting another host",
+			path:         "/%5Cevil.example/x",
+			wantLocation: "/%5Cevil.example/x/",
+		},
+	}
 
-	rec := httptest.NewRecorder()
-	server.Handler.ServeHTTP(rec, req)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, tt.path, http.NoBody)
+			require.NoError(t, err)
 
-	assert.Equal(t, http.StatusMovedPermanently, rec.Code)
-	assert.Equal(t, "/testorg/testrepo/", rec.Header().Get("Location"))
+			rec := httptest.NewRecorder()
+			server.Handler.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusMovedPermanently, rec.Code)
+			assert.Equal(t, tt.wantLocation, rec.Header().Get("Location"))
+		})
+	}
 }

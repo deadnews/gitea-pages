@@ -33,7 +33,7 @@ func (app *App) handlePages(w http.ResponseWriter, r *http.Request) {
 	// Directory without trailing slash → redirect if its index.html exists.
 	if !isDir {
 		if _, ok := app.getFile(owner, repo, rawPath+"/index.html"); ok {
-			dir := r.URL.Path + "/"
+			dir := r.URL.EscapedPath() + "/"
 			http.Redirect(w, r, dir, http.StatusMovedPermanently) //nolint:gosec // G710
 			return
 		}
@@ -85,5 +85,5 @@ func escapeFilePath(filePath string) (string, bool) {
 
 // handleRepoRedirect redirects /{owner}/{repo} to /{owner}/{repo}/.
 func handleRepoRedirect(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently) //nolint:gosec // G710
+	http.Redirect(w, r, r.URL.EscapedPath()+"/", http.StatusMovedPermanently) //nolint:gosec // G710
 }
