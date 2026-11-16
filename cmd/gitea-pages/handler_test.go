@@ -144,6 +144,46 @@ func TestHandlePagesDirectoryMissSingleFetch(t *testing.T) {
 	assert.Equal(t, int32(1), fg.fileRequests.Load())
 }
 
+func TestHandlePagesUpstreamFailure(t *testing.T) {
+	fg := newFakeGitea(t)
+	closed := httptest.NewServer(http.NotFoundHandler())
+	closed.Close()
+
+	tests := []struct {
+		name   string
+		server string
+		token  string
+	}{
+		{
+			name:   "returns 404 when Gitea rejects the token",
+			server: fg.server.URL,
+			token:  "wrong-token",
+		},
+		{
+			name:   "returns 404 when Gitea is unreachable",
+			server: closed.URL,
+			token:  fakeToken,
+		},
+		{
+			name:   "returns 404 for malformed server URL",
+			server: "://invalid-url",
+			token:  fakeToken,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := newApp(&config{GiteaServer: tt.server, GiteaToken: tt.token, PagesBranch: "gh-pages"})
+
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/testorg/testrepo/", http.NoBody)
+			rec := httptest.NewRecorder()
+			app.newServer().Handler.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusNotFound, rec.Code)
+		})
+	}
+}
+
 func TestHandleRepoRedirect(t *testing.T) {
 	app := newFakeGitea(t).newApp()
 	server := app.newServer()

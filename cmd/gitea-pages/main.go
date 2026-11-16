@@ -28,12 +28,7 @@ func run() error {
 		return fmt.Errorf("load config: %w", err)
 	}
 
-	app, err := newApp(cfg)
-	if err != nil {
-		return fmt.Errorf("init application: %w", err)
-	}
-
-	server := app.newServer()
+	server := newApp(cfg).newServer()
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

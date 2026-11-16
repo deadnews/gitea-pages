@@ -1,28 +1,24 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
+	"strings"
 	"time"
-
-	"code.gitea.io/sdk/gitea"
 )
 
 // App holds application dependencies.
 type App struct {
-	client *gitea.Client
+	client *http.Client
+	apiURL string
 	config *config
 }
 
-func newApp(cfg *config) (*App, error) {
-	client, err := gitea.NewClient(cfg.GiteaServer,
-		gitea.SetToken(cfg.GiteaToken),
-		gitea.SetHTTPClient(&http.Client{Timeout: 10 * time.Second}),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("create gitea client: %w", err)
+func newApp(cfg *config) *App {
+	return &App{
+		client: &http.Client{Timeout: 10 * time.Second},
+		apiURL: strings.TrimSuffix(cfg.GiteaServer, "/") + "/api/v1",
+		config: cfg,
 	}
-	return &App{client: client, config: cfg}, nil
 }
 
 func (app *App) newServer() *http.Server {

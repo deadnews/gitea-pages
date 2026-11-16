@@ -57,16 +57,8 @@ func TestRunConfigError(t *testing.T) {
 	require.ErrorContains(t, run(), "load config")
 }
 
-func TestRunClientError(t *testing.T) {
-	t.Setenv("GITEA_PAGES_SERVER", "://invalid-url")
-	t.Setenv("GITEA_PAGES_TOKEN", "test-token")
-
-	require.ErrorContains(t, run(), "init application")
-}
-
 func TestRunListenError(t *testing.T) {
-	fg := newFakeGitea(t)
-	t.Setenv("GITEA_PAGES_SERVER", fg.server.URL)
+	t.Setenv("GITEA_PAGES_SERVER", "https://gitea.example.com")
 	t.Setenv("GITEA_PAGES_TOKEN", "test-token")
 	t.Setenv("GITEA_PAGES_ADDR", "127.0.0.1:99999")
 
@@ -74,9 +66,8 @@ func TestRunListenError(t *testing.T) {
 }
 
 func TestRunGracefulShutdown(t *testing.T) {
-	fg := newFakeGitea(t)
 	addr := freeAddr(t)
-	t.Setenv("GITEA_PAGES_SERVER", fg.server.URL)
+	t.Setenv("GITEA_PAGES_SERVER", "https://gitea.example.com")
 	t.Setenv("GITEA_PAGES_TOKEN", "test-token")
 	t.Setenv("GITEA_PAGES_ADDR", addr)
 

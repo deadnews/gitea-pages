@@ -9,15 +9,15 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"code.gitea.io/sdk/gitea"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+const fakeToken = "test-token"
+
 // fakeGitea is an in-memory Gitea API stub for tests.
 type fakeGitea struct {
 	server       *httptest.Server
-	client       *gitea.Client
 	fileRequests atomic.Int32
 }
 
@@ -39,14 +39,12 @@ func newFakeGitea(t *testing.T) *fakeGitea {
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		urlPath := r.URL.Path
-
-		// GET /api/v1/version - version check
-		if urlPath == "/api/v1/version" {
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"version":"1.27.0"}`))
+		if r.Header.Get("Authorization") != "token "+fakeToken {
+			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
+
+		urlPath := r.URL.Path
 
 		// GET /api/v1/repos/{owner}/{repo}/media/{filepath}?ref={ref}
 		prefix := "/api/v1/repos/"
@@ -68,48 +66,49 @@ func newFakeGitea(t *testing.T) *fakeGitea {
 	}))
 	t.Cleanup(server.Close)
 
-	client, err := gitea.NewClient(server.URL, gitea.SetToken("test-token"))
-	require.NoError(t, err)
-
 	fg.server = server
-	fg.client = client
 	return fg
 }
 
 func (f *fakeGitea) newApp() *App {
-	return &App{client: f.client, config: &config{PagesBranch: "gh-pages", Addr: ":8000"}}
+	return newApp(&config{
+		GiteaServer: f.server.URL,
+		GiteaToken:  fakeToken,
+		PagesBranch: "gh-pages",
+		Addr:        ":8000",
+	})
 }
 
 func TestNewApp(t *testing.T) {
-	t.Run("creates app with valid config", func(t *testing.T) {
-		fg := newFakeGitea(t)
-		cfg := &config{
-			GiteaServer: fg.server.URL,
-			GiteaToken:  "test-token",
-			PagesBranch: "gh-pages",
-			Addr:        ":8000",
-		}
+	tests := []struct {
+		name       string
+		server     string
+		wantAPIURL string
+	}{
+		{
+			name:       "appends API path to bare host",
+			server:     "https://gitea.example.com",
+			wantAPIURL: "https://gitea.example.com/api/v1",
+		},
+		{
+			name:       "ignores trailing slash",
+			server:     "https://gitea.example.com/",
+			wantAPIURL: "https://gitea.example.com/api/v1",
+		},
+		{
+			name:       "keeps subpath",
+			server:     "https://example.com/gitea/",
+			wantAPIURL: "https://example.com/gitea/api/v1",
+		},
+	}
 
-		app, err := newApp(cfg)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := newApp(&config{GiteaServer: tt.server})
 
-		require.NoError(t, err)
-		require.NotNil(t, app)
-		assert.NotNil(t, app.client)
-		assert.Equal(t, cfg, app.config)
-	})
-
-	t.Run("returns error for invalid server URL", func(t *testing.T) {
-		cfg := &config{
-			GiteaServer: "://invalid-url",
-			GiteaToken:  "test-token",
-			PagesBranch: "gh-pages",
-		}
-
-		app, err := newApp(cfg)
-
-		require.Error(t, err)
-		assert.Nil(t, app)
-	})
+			assert.Equal(t, tt.wantAPIURL, app.apiURL)
+		})
+	}
 }
 
 func TestNewServerNonExistentRoute(t *testing.T) {

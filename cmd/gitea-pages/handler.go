@@ -1,6 +1,10 @@
 package main
 
 import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
 	"log/slog"
 	"mime"
 	"net/http"
@@ -8,6 +12,8 @@ import (
 	"path"
 	"strings"
 )
+
+var errNotFound = errors.New("not found")
 
 func handleHealth(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
@@ -25,14 +31,14 @@ func (app *App) handlePages(w http.ResponseWriter, r *http.Request) {
 	if isDir {
 		filePath += "index.html"
 	}
-	if content, ok := app.getFile(owner, repo, filePath); ok {
+	if content, ok := app.getFile(r.Context(), owner, repo, filePath); ok {
 		writeContent(w, filePath, content)
 		return
 	}
 
 	// Directory without trailing slash → redirect if its index.html exists.
 	if !isDir {
-		if _, ok := app.getFile(owner, repo, rawPath+"/index.html"); ok {
+		if _, ok := app.getFile(r.Context(), owner, repo, rawPath+"/index.html"); ok {
 			dir := r.URL.EscapedPath() + "/"
 			http.Redirect(w, r, dir, http.StatusMovedPermanently) //nolint:gosec // G710
 			return
@@ -52,22 +58,53 @@ func writeContent(w http.ResponseWriter, filePath string, content []byte) {
 	}
 }
 
-func (app *App) getFile(owner, repo, filePath string) ([]byte, bool) {
-	escaped, ok := escapeFilePath(filePath)
-	if !ok {
-		return nil, false
-	}
-
-	content, resp, err := app.client.GetFile(
-		owner, repo, app.config.PagesBranch, escaped, true)
+func (app *App) getFile(ctx context.Context, owner, repo, filePath string) ([]byte, bool) {
+	content, err := app.fetchFile(ctx, owner, repo, filePath)
 	if err != nil {
-		if resp == nil || resp.StatusCode != http.StatusNotFound {
+		if !errors.Is(err, errNotFound) {
 			slog.Warn("Failed to fetch from Gitea",
 				"owner", owner, "repo", repo, "path", filePath, "error", err)
 		}
 		return nil, false
 	}
 	return content, true
+}
+
+func (app *App) fetchFile(ctx context.Context, owner, repo, filePath string) ([]byte, error) {
+	escaped, ok := escapeFilePath(filePath)
+	if !ok {
+		return nil, errNotFound
+	}
+
+	// The media endpoint resolves LFS pointers, the raw one returns them as is.
+	fileURL := fmt.Sprintf("%s/repos/%s/%s/media/%s?ref=%s", app.apiURL,
+		url.PathEscape(owner), url.PathEscape(repo), escaped,
+		url.QueryEscape(app.config.PagesBranch))
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fileURL, http.NoBody) //nolint:gosec // G704
+	if err != nil {
+		return nil, fmt.Errorf("build request: %w", err)
+	}
+	req.Header.Set("Authorization", "token "+app.config.GiteaToken)
+
+	resp, err := app.client.Do(req) //nolint:gosec // G704
+	if err != nil {
+		return nil, fmt.Errorf("send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, errNotFound
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status: %s", resp.Status)
+	}
+
+	content, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read response: %w", err)
+	}
+	return content, nil
 }
 
 // escapeFilePath encodes each segment so the path cannot alter the upstream

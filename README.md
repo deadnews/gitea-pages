@@ -1,6 +1,6 @@
 # gitea-pages
 
-> A static pages server for [Gitea](https://github.com/go-gitea/gitea)
+> A static pages server for [Gitea](https://github.com/go-gitea/gitea) and [Forgejo](https://codeberg.org/forgejo/forgejo)
 
 [![GitHub: Release](https://img.shields.io/github/v/release/deadnews/gitea-pages?logo=github&logoColor=white)](https://github.com/deadnews/gitea-pages/releases/latest)
 [![Docker: ghcr](https://img.shields.io/badge/docker-gray.svg?logo=docker&logoColor=white)](https://github.com/deadnews/gitea-pages/pkgs/container/gitea-pages)
@@ -23,6 +23,10 @@ See [`compose.dev.yml`](compose.dev.yml) for a Compose reference.
 | `GITEA_PAGES_TOKEN`  |            | Gitea API read token       |
 | `GITEA_PAGES_BRANCH` | `gh-pages` | Branch to serve pages from |
 | `GITEA_PAGES_ADDR`   | `:8000`    | Listen address             |
+
+- The token needs the `read:repository` scope.
+- The pages branch of every repository the token can read is served to anyone.
+- A wrong server URL or token doesn't fail startup: every page answers 404, see the log.
 
 ## Deploying a site
 
