@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
 	"strings"
 )
 
@@ -52,6 +53,7 @@ func writeContent(w http.ResponseWriter, filePath string, content []byte) {
 	if ct := mime.TypeByExtension(path.Ext(filePath)); ct != "" {
 		w.Header().Set("Content-Type", ct)
 	}
+	w.Header().Set("Content-Length", strconv.Itoa(len(content)))
 
 	if _, err := w.Write(content); err != nil { //nolint:gosec // G705
 		slog.Error("Failed to write response", "error", err)

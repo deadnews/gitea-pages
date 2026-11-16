@@ -40,7 +40,10 @@ func TestHandlePages(t *testing.T) {
 			path:       "/testorg/testrepo/style.css",
 			wantStatus: http.StatusOK,
 			wantBody:   "body {}",
-			wantHeader: map[string]string{"Content-Type": "text/css; charset=utf-8"},
+			wantHeader: map[string]string{
+				"Content-Type":   "text/css; charset=utf-8",
+				"Content-Length": "7",
+			},
 		},
 		{
 			name:       "serves nested file",
